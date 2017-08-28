@@ -1,0 +1,23 @@
+int visiblePoints(int[][] points) {
+    int puntos=0;
+    int x= 0;
+    int y =0;
+    for(int contador =0; contador < points[contador].length; contador ++ ){
+        for(int contador2 =0; contador2 < points[contador2].length; contador2 ++){
+            x= points[contador2].length;
+            y= points[contador].length;
+            
+            double angle = (double) Math.toDegrees(Math.atan2(y - 0, x -0));
+    
+
+            if(angle < 0){
+            angle += 360;
+            }
+           
+            if(angle >= 45){
+                puntos++;
+            }
+        }
+    }
+    return puntos;
+}

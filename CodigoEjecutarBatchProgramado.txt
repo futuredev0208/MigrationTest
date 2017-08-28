@@ -1,0 +1,13 @@
+// Instantiate the batch class
+BatchExcedidos myBatch = new BatchExcedidos();
+ 
+// Instantiate the scheduler
+BatchSchedulableExcedidos scheduler = new BatchSchedulableExcedidos();
+ 
+// Assign the batch class to the variable within the scheduler
+scheduler.batchClass = myBatch;
+ 
+// Run every day at 1pm
+String sch = '0 0 22 * * ?';
+ 
+System.schedule('Batch Corre 10 pm', sch, scheduler);

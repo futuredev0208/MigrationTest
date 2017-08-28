@@ -1,0 +1,90 @@
+public with sharing class SendToDocuSignController {
+    private final Contract contract;
+    
+    public String envelopeId {get;set;}
+    private String accountId = '8cd33cef-4550-43b9-9416-570906f2256d';
+    private String userId = '4d919d27-f396-4374-847e-11d06b452ce6';
+    private String password = 'jhovas0208';
+    private String integratorsKey = '6dc34ce3-99a1-424d-bf2e-31608c27de4a';
+    private String webServiceUrl 
+        = 'https://demo.docusign.net/api/3.0/dsapi.asmx';
+    
+    public SendToDocuSignController(ApexPages.StandardController controller)
+    {
+        this.contract = [select Id, CustomerSignedId, AccountId, ContractNumber 
+                         from Contract where id = :controller.getRecord().Id];
+        envelopeId = 'Not sent yet';
+        
+        SendNow();
+    }
+    
+    public void SendNow()
+    {
+        wwwDocusignNetApi30.APIServiceSoap dsApiSend 
+            = new wwwDocusignNetApi30.APIServiceSoap();
+        dsApiSend.endpoint_x = webServiceUrl;
+        
+        //Set Authentication
+        String auth = '<DocuSignCredentials><Username>'+ userId 
+            +'</Username><Password>' + password 
+            + '</Password><IntegratorKey>' + integratorsKey 
+            + '</IntegratorKey></DocuSignCredentials>';
+        System.debug('Setting authentication to: ' + auth);
+        
+        dsApiSend.inputHttpHeaders_x = new Map<String, String>();
+        dsApiSend.inputHttpHeaders_x.put('X-DocuSign-Authentication', 
+                                         auth);
+        
+        Contact contact = [SELECT email, FirstName, LastName 
+            from Contact where id = :contract.CustomerSignedId];
+        
+        // Render the contract
+        System.debug('Rendering the contract');
+        PageReference pageRef = new PageReference('/apex/RenderContract');
+        pageRef.getParameters().put('id',contract.Id);
+        Blob pdfBlob = pageRef.getContent();  
+        
+        // Create the recipient information
+        wwwDocusignNetApi30.Recipient recipient = new wwwDocusignNetApi30.Recipient();
+        recipient.Email = contact.Email;
+        recipient.UserName = contact.FirstName + ' ' + contact.LastName;
+        recipient.Type_x = 'Signer';
+        recipient.ID = 1;
+        recipient.RoutingOrder = 1;
+        recipient.RequireIDLookup = false; 
+        wwwDocusignNetApi30.ArrayOfRecipient1 recipients = new wwwDocusignNetApi30.ArrayOfRecipient1();
+        recipients.Recipient = new wwwDocusignNetApi30.Recipient[1];
+        recipients.Recipient[0] =  recipient;
+        
+            
+            // Create the template reference from a server-side template ID
+        wwwDocusignNetApi30.TemplateReference templateReference = new wwwDocusignNetApi30.TemplateReference();
+        templateReference.Template = '25939367-ce36-4a99-a3dc-305b2f6e5f16';
+        templateReference.TemplateLocation = 'Server';
+            
+        wwwDocusignNetApi30.ArrayOfTemplateReference templateReferences= new wwwDocusignNetApi30.ArrayOfTemplateReference();   
+        templateReferences.TemplateReference = new wwwDocusignNetApi30.TemplateReference[1];
+        templateReferences.TemplateReference[0]  = templateReference;
+        
+        // Construct the envelope information
+        wwwDocusignNetApi30.EnvelopeInformation envelopeInfo = new wwwDocusignNetApi30.EnvelopeInformation();
+        envelopeInfo.AccountId = AccountId;
+        envelopeInfo.Subject = 'TEST ENVIO TEMPLATE'+ contract.ContractNumber;
+        envelopeInfo.EmailBlurb = 'Email Body';
+        
+        // Create draft with all the template information
+        // 
+        wwwDocusignNetApi30.EnvelopeStatus status = dsApiSend.CreateEnvelopeFromTemplates(templateReferences, recipients,envelopeInfo, true);
+        envelopeId = status.EnvelopeID;
+        
+/*System.debug('Calling the API');
+        try {
+            status = dsApiSend.CreateAndSendEnvelope();
+          //  envelopeId = es.EnvelopeID;
+        } catch ( CalloutException e) {
+            System.debug('Exception - ' + e );
+            envelopeId = 'Exception - ' + e;
+        }*/
+        
+    }
+}

@@ -1,0 +1,116 @@
+public with sharing class SendToDocuSignController {
+    private final Contract contract;
+    
+    public String envelopeId {get;set;}
+    private String accountId = '8cd33cef-4550-43b9-9416-570906f2256d';
+    private String userId = '4d919d27-f396-4374-847e-11d06b452ce6';
+    private String password = 'jhovas0208';
+    private String integratorsKey = '6dc34ce3-99a1-424d-bf2e-31608c27de4a';
+    private String webServiceUrl 
+        = 'https://demo.docusign.net/api/3.0/dsapi.asmx';
+    
+    public SendToDocuSignController(ApexPages.StandardController controller)
+    {
+        this.contract = [select Id, CustomerSignedId, AccountId, ContractNumber 
+        from Contract where id = :controller.getRecord().Id];
+        envelopeId = 'Not sent yet';
+        
+        SendNow();
+    }
+
+    public void SendNow()
+    {
+        wwwDocusignNetApi30.APIServiceSoap dsApiSend 
+            = new wwwDocusignNetApi30.APIServiceSoap();
+        dsApiSend.endpoint_x = webServiceUrl;
+
+        //Set Authentication
+        String auth = '<DocuSignCredentials><Username>'+ userId 
+            +'</Username><Password>' + password 
+            + '</Password><IntegratorKey>' + integratorsKey 
+            + '</IntegratorKey></DocuSignCredentials>';
+        System.debug('Setting authentication to: ' + auth);
+            
+        dsApiSend.inputHttpHeaders_x = new Map<String, String>();
+        dsApiSend.inputHttpHeaders_x.put('X-DocuSign-Authentication', 
+            auth);
+ 
+        wwwDocusignNetApi30.Envelope envelope = new wwwDocusignNetApi30.Envelope();
+        envelope.Subject = 'Please Sign this Contract: ' 
+            + contract.ContractNumber;
+        envelope.EmailBlurb = 'This is my new eSignature service,'+ 
+            ' it allows me to get your signoff without having to fax, ' +
+            'scan, retype, refile and wait forever';
+        envelope.AccountId  = accountId; 
+        
+
+        // Render the contract
+        System.debug('Rendering the contract');
+        PageReference pageRef = new PageReference('/apex/RenderContract');
+        pageRef.getParameters().put('id',contract.Id);
+        Blob pdfBlob = pageRef.getContent();     
+
+        // Document
+        wwwDocusignNetApi30.Document document = new wwwDocusignNetApi30.Document();
+        document.ID = 1;
+        document.pdfBytes = EncodingUtil.base64Encode(pdfBlob);
+        document.Name = 'Contract';
+        document.FileExtension = 'pdf';
+        envelope.Documents = new wwwDocusignNetApi30.ArrayOfDocument();
+        envelope.Documents.Document = new wwwDocusignNetApi30.Document[1];
+        envelope.Documents.Document[0] = document;
+        
+        // Recipient
+        System.debug('getting the contact');
+        Contact contact = [SELECT email, FirstName, LastName 
+            from Contact where id = :contract.CustomerSignedId];
+        
+        wwwDocusignNetApi30.Recipient recipient = new wwwDocusignNetApi30.Recipient();
+        recipient.ID = 1;
+        recipient.Type_x = 'Signer';
+        recipient.RoutingOrder = 1;
+        recipient.Email = contact.Email;
+        recipient.UserName = contact.FirstName + ' ' + contact.LastName;
+            
+        // This setting seems required or you see the error:
+        // "The string '' is not a valid Boolean value. 
+        // at System.Xml.XmlConvert.ToBoolean(String s)" 
+        recipient.RequireIDLookup = false;      
+        
+        envelope.Recipients = new wwwDocusignNetApi30.ArrayOfRecipient();
+        envelope.Recipients.Recipient = new wwwDocusignNetApi30.Recipient[1];
+        envelope.Recipients.Recipient[0] = recipient;
+        
+        // Tab
+        wwwDocusignNetApi30.Tab tab1 = new wwwDocusignNetApi30.Tab();
+        tab1.Type_x = 'SignHere';
+        tab1.RecipientID = 1;
+        tab1.DocumentID = 1;
+        tab1.AnchorTabItem = new wwwDocusignNetApi30.AnchorTab();
+        tab1.AnchorTabItem.AnchorTabString = 'By:';
+
+        
+        wwwDocusignNetApi30.Tab tab2 = new wwwDocusignNetApi30.Tab();
+        tab2.Type_x = 'DateSigned';
+        tab2.RecipientID = 1;
+        tab2.DocumentID = 1;
+        tab2.AnchorTabItem = new wwwDocusignNetApi30.AnchorTab();
+        tab2.AnchorTabItem.AnchorTabString = 'Date Signed:';
+        
+        envelope.Tabs = new wwwDocusignNetApi30.ArrayOfTab();
+        envelope.Tabs.Tab = new wwwDocusignNetApi30.Tab[2];
+        envelope.Tabs.Tab[0] = tab1;        
+        envelope.Tabs.Tab[1] = tab2;        
+        
+        System.debug('Calling the API');
+        try {
+            wwwDocusignNetApi30.EnvelopeStatus es 
+            = dsApiSend.CreateAndSendEnvelope(envelope);
+            envelopeId = es.EnvelopeID;
+        } catch ( CalloutException e) {
+            System.debug('Exception - ' + e );
+            envelopeId = 'Exception - ' + e;
+        }
+      
+    }
+}
