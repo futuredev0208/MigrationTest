@@ -1,0 +1,22 @@
+({
+    Reload: function(component){
+        var action = component.get("c.getDP");
+        action.setParams({
+            "id": component.get("v.recordId")
+        });
+        action.setCallback(this, function(response){
+            var state = response.getState();
+            if (state === "SUCCESS") {
+                component.set("v.Deudas", response.getReturnValue());
+            }
+        });
+        $A.enqueueAction(action);
+    },
+    
+    closeModel: function(component, event, helper) {
+        // for Hide/Close Model,set the "isOpen" attribute to "Fasle" 
+        component.set("v.isOpen", false);
+        
+    },
+})
+})

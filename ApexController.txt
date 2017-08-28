@@ -1,0 +1,123 @@
+public without sharing class Ctrl_Deudas_Lightning_Component {
+    
+    
+    //Busqueda individuales
+    @AuraEnabled
+    public static Deuda_del_producto__c getDP(Id id) {
+        Deuda_del_producto__c DeudaPro = [SELECT Id,Etapa__c,RTD__c,deuda__c,Num_Negociaciones__c,Atraso_meses__c,
+                                                 NEG_Descuento_Obtenido__c,NEG_Fecha_de_Negociacion__c,
+                                                 NEG_Folio_de_negociacion__c,Institucion_Bancaria__c,
+                                                 NEG_Monto_a_pagar__c,Monto_Deuda__c,
+                                                 Nombre_del_cliente__c,NEG_Saldo_Actual__c,NEG_Vigencia__c
+                                                 FROM Deuda_del_producto__c
+                                                 WHERE Id = :id  ];
+        
+        // Perform isAccessible() check here 
+        return DeudaPro;
+    }
+    
+    @AuraEnabled
+    public static Deuda_del_producto__c getDP2(Id id) {
+        Deuda_del_producto__c DeudaPro = [SELECT Id,Etapa__c,RTD__c,deuda__c,Num_Negociaciones__c,Atraso_meses__c,
+                                                 NEG_Descuento_Obtenido__c,NEG_Fecha_de_Negociacion__c,
+                                                 NEG_Folio_de_negociacion__c,Institucion_Bancaria__c,
+                                                 NEG_Monto_a_pagar__c,Monto_Deuda__c,
+                                                 Nombre_del_cliente__c,NEG_Saldo_Actual__c,NEG_Vigencia__c
+                                                 FROM Deuda_del_producto__c
+                                                 WHERE Id = :id  ];
+        
+        // Perform isAccessible() check here 
+        update DeudaPro;
+        return DeudaPro;
+    }
+    //Busqueda lista
+    @AuraEnabled
+    public static List<Deuda_del_producto__c> getDPS(Id id) {
+        List<Deuda_del_producto__c> DeudasPro = [SELECT Id,Etapa__c,RTD__c,deuda__c,Num_Negociaciones__c,Atraso_meses__c,
+                                                 NEG_Descuento_Obtenido__c,NEG_Fecha_de_Negociacion__c,
+                                                 NEG_Folio_de_negociacion__c,Institucion_Bancaria__c,
+                                                 NEG_Monto_a_pagar__c,Monto_Deuda__c,
+                                                 Nombre_del_cliente__c,NEG_Saldo_Actual__c,NEG_Vigencia__c
+                                                 FROM Deuda_del_producto__c
+                                                 WHERE Id = :id ];
+        return DeudasPro;
+    }
+    
+    @AuraEnabled
+    public static List<Deuda_del_producto__c> getDPS2(Id id) {
+        //Consulta a cliente para obtener correo electronico
+        List<Deuda_del_producto__c> DeudasPro = [SELECT Id,Etapa__c,RTD__c,deuda__c,Num_Negociaciones__c,Atraso_meses__c,
+                                                 NEG_Descuento_Obtenido__c,NEG_Fecha_de_Negociacion__c,
+                                                 NEG_Folio_de_negociacion__c,Institucion_Bancaria__c,
+                                                 NEG_Monto_a_pagar__c,Monto_Deuda__c,
+                                                 Nombre_del_cliente__c,NEG_Saldo_Actual__c,NEG_Vigencia__c 
+                                                 FROM Deuda_del_producto__c
+                                                 WHERE Id = :id ];
+        
+        update DeudasPro;   
+        return DeudasPro;
+
+    }
+    //Metodo para poder ejecutar el envio de correo email
+    @AuraEnabled
+    public static List<Deuda_del_producto__c>  F2B_Envio(Id id){
+        //Consulta a cliente para obtener correo electronico
+        ProductoCliente__c PruductoCliente = new ProductoCliente__c();
+        Account Cuenta = new Account();
+        EmailTemplate templateId2;
+        List<Deuda_del_producto__c> DeudasPro = [SELECT Id,Etapa__c,RTD__c,deuda__c,Num_Negociaciones__c,Atraso_meses__c,
+                                                 NEG_Descuento_Obtenido__c,NEG_Fecha_de_Negociacion__c,
+                                                 NEG_Folio_de_negociacion__c,Institucion_Bancaria__c,
+                                                 NEG_Monto_a_pagar__c,Monto_Deuda__c,
+                                                 Nombre_del_cliente__c,NEG_Saldo_Actual__c,NEG_Vigencia__c 
+                                                 FROM Deuda_del_producto__c
+                                                 WHERE Id = :id ];
+        
+        
+        if(!DeudasPro.isEmpty()){
+            Set<ID> pcids = new Set<id>();
+            for(Deuda_del_producto__c dp: DeudasPro){
+                pcids.add(dp.RTD__c);
+            }
+            PruductoCliente = [SELECT id,Cuenta__c FROM ProductoCliente__c WHERE id IN: pcids];
+            System.debug('PruductoCliente' + PruductoCliente.Cuenta__c);
+            Cuenta = [SELECT id,PersonEmail FROM Account WHERE id =: PruductoCliente.Cuenta__c];
+            System.debug('Cuenta'+Cuenta.PersonEmail);
+        }
+        
+        List<String> listaCorreos = new List<String>();
+        listaCorreos.add(String.valueOf(Cuenta.PersonEmail));
+        Contact contacto = new Contact();
+        contacto.Salutation = 'Ing.';
+        contacto.FirstName = 'FName';
+        contacto.LastName = 'LName';
+        contacto.Email = 'test@gmail.com';
+        insert contacto; 
+        
+        templateId2 = [Select id,Name from EmailTemplate where name = 'Correo Carta de instrucción' Limit 1];
+        //Codigo envio EmailTemplate
+        EmailTemplate templateId = templateId2;
+        Messaging.SingleEmailMessage msg = new Messaging.SingleEmailMessage();
+        msg.setTemplateId(templateId.id);
+        String[] toAddresses = listaCorreos; 
+        msg.setWhatId(DeudasPro[0].id);
+        msg.setSaveAsActivity(true);
+        msg.setToAddresses(toAddresses);
+        msg.setTargetObjectId(contacto.Id);
+        msg.setSaveAsActivity(true);
+        Messaging.sendEmail(new Messaging.SingleEmailMessage[] { msg });
+        delete contacto;
+        listaCorreos.clear();
+        return DeudasPro;
+    }
+    
+    @AuraEnabled
+    public static Integer  getCloudDocuments(ID id)
+    {
+        List<DragDropToCloud__Cloud_Documents__c> DocumentosPorDeuda = new List<DragDropToCloud__Cloud_Documents__c>();
+        DocumentosPorDeuda=[SELECT id,Deuda_del_producto__c FROM DragDropToCloud__Cloud_Documents__c WHERE Deuda_del_producto__c =:id];
+        return DocumentosPorDeuda.size();
+       
+    }
+    
+}

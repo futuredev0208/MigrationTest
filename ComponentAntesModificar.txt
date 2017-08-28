@@ -1,0 +1,84 @@
+<aura:component controller="Ctrl_Deudas_Lightning_Component" implements="flexipage:availableForAllPageTypes,force:hasRecordId" access="global">
+    
+    <!--<aura:handler name="init" value="{!this}" action="{!c.doInit}" />-->
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    <aura:handler event="force:showToast" action="{!c.doUpdate}"/>
+    <aura:handler event="force:showToast" action="{!c.openModel}"/>
+    <aura:handler event="force:showToast" action="{!c.getDocuments}"/>
+    <aura:handler event="force:refreshView" action="{!c.doUpdate}"/>
+    <aura:handler event="force:refreshView" action="{!c.openModel}"/>
+    <aura:handler event="force:refreshView" action="{!c.getDocuments}"/>
+    <aura:handler name="onSaveSuccess" event="force:recordSaveSuccess" action="{!c.doUpdate}"/>
+    <aura:attribute name="Deudas" type="Deuda_del_producto__c"/>
+    <aura:attribute name="isOpen" type="boolean" default="true"/>
+    <aura:attribute name="recordId" type="Id" />
+    <aura:attribute name="Documentos" type="Integer"/>
+    
+    
+    <!--Mesaje si la etapa es "Carta de instruccion enviada y el total ahorrado es mayor al total a 
+ pagar en nuestra ultima negociación" -->
+    <aura:if isTrue="{!v.isOpen}">
+        <span>
+            <aura:if isTrue="{!and(v.Deudas.Etapa__c == 'Carta de instrucción enviada', v.Deudas.NEG_Fecha_de_Negociacion__c != null )}">
+                <div role="dialog" tabindex="-1" aria-labelledby="header99" class="slds-modal slds-fade-in-open " >
+                    <div class="slds-modal__container">
+                        <div class="slds-modal__header">
+                            <h2 id="header99" class="slds-text-heading--medium">Envio de carta de instrucción.</h2>
+                        </div>
+                        <div class="slds-modal__content slds-p-around--medium">
+                            <p><b>Al dar clic en el boton de "Enviar" se hara llegar un correo electronico con un PDF adjunto al cliente.</b>
+                            </p>
+                        </div>
+                        <div class="slds-modal__footer">
+                            <button clas-s="slds-button slds-button--neutral" onclick="{!c.closeModel}" >Cerrar</button>
+                            <button class="slds-button slds-button--neutral" onclick="{!c.sendEmail}" >Enviar</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="slds-backdrop slds-backdrop--open"></div>
+            </aura:if>
+            
+            <!--Mensaje cuando la etapa es "Carta de instruccion enviada y el total ahorrado es menor al monto a pagar" -->
+            <aura:if isTrue="{!v.isOpen}">
+                <aura:if isTrue="{!and(v.Deudas.Etapa__c == 'Carta de instrucción enviada', v.Deudas.NEG_Fecha_de_Negociacion__c == null )}">
+                    <div role="dialog" tabindex="-1" aria-labelledby="header99" class="slds-modal slds-fade-in-open " >
+                        <div class="slds-modal__container">
+                            <div class="slds-modal__header">
+                                <h2 id="header99" class="slds-text-heading--medium">Atención.</h2>
+                            </div>
+                            <div class="slds-modal__content slds-p-around--medium">
+                                <p><b>El Total ahorrado del cliente es menor al monto a pagar en nuestra ultima negociación.</b>
+                                </p>
+                            </div>
+                            <div class="slds-modal__footer">
+                                <button clas-s="slds-button slds-button--neutral" onclick="{!c.closeModel}" >Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slds-backdrop slds-backdrop--open"></div>
+                </aura:if>
+            </aura:if>
+            
+            <aura:if isTrue="{!v.isOpen}">
+                <aura:if isTrue="{!and(v.Deudas.Etapa__c == 'Liquidado',v.Documentos == 0)}">
+                    <div role="dialog" tabindex="-1" aria-labelledby="header99" class="slds-modal slds-fade-in-open " >
+                        <div class="slds-modal__container">
+                            <div class="slds-modal__header">
+                                <h2 id="header99" class="slds-text-heading--medium">Atención.</h2>
+                            </div>
+                            <div class="slds-modal__content slds-p-around--medium">
+                                <p><b>Ir a la aplización de carga de archivos a AWS S3.</b>
+                                </p>
+                            </div>
+                            <div class="slds-modal__footer">
+                                <button clas-s="slds-button slds-button--neutral" onclick="{!c.closeModel}" >Cerrar</button>
+                                <button clas-s="slds-button slds-button--neutral" onclick="{!c.gotoURL}" >Ir</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="slds-backdrop slds-backdrop--open"></div>
+                </aura:if>
+            </aura:if>
+        </span>
+    </aura:if>
+</aura:component>
